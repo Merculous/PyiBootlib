@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "ibootlib"
+version = "1.0"
+description = ""
+authors = ["Merculous <24739823+Merculous@users.noreply.github.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+armfind = {git = "https://github.com/Merculous/PyARMFind.git"}
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
