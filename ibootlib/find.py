@@ -5,7 +5,8 @@ from armfind.find import (
     find_next_MOVW_with_value,
     find_next_MOV_W_with_value,
     find_next_LDR_Literal,
-    find_next_BL
+    find_next_BL,
+    find_next_LDR_W_with_value
 )
 from binpatch.utils import getBufferAtIndex
 from binpatch.types import Buffer
@@ -15,9 +16,16 @@ class iBoot:
         self.data = data
         self.log = log
         self.loadAddr = self.getLoadAddr()
+        self.hasKernelLoad = self.canLoadKernel()
 
     def getLoadAddr(self) -> int:
         return struct.unpack('<I', getBufferAtIndex(self.data, 0x20, 4))[0] - 0x40
+    
+    def canLoadKernel(self) -> bool:
+        loadStr = b'error loading kernelcache\n'
+        offset = self.data.find(loadStr)
+        found = True if offset != -1 else False
+        return found
 
     def find_prod(self) -> int:
         if self.log:
@@ -148,3 +156,35 @@ class iBoot:
             print(f'Found MOV.W Rx, #0xFFFFFFFF at {mov_wOffset:x}')
 
         return mov_wOffset
+
+    def find_debug_enabled(self) -> int:
+        if self.log:
+            print('find_debug_enabled()')
+
+        debugStrOffset = self.data.find(b'debug-enabled')
+
+        if debugStrOffset == -1:
+            raise Exception('Failed to find debug-enabled!')
+
+        debugStrAddr = struct.pack('<I', self.loadAddr + debugStrOffset)
+        ldr = find_next_LDR_W_with_value(self.data, 0, 0, debugStrAddr)
+
+        if ldr is None:
+            raise Exception('Failed to find LDR.W Rx, debug-enabled!')
+
+        ldr, ldrOffset = ldr
+
+        if self.log:
+            print(f'Found LDR.W Rx, debug-enabled at {ldrOffset:x}')
+
+        bl = find_next_BL(self.data, ldrOffset, 1)
+
+        if bl is None:
+            raise Exception('Failed to find BL!')
+
+        bl, blOffset = bl
+
+        if self.log:
+            print(f'Found BL at {blOffset:x}')
+
+        return blOffset

@@ -27,3 +27,7 @@ class iBootPatcher(iBoot):
     def patch_rsa(self) -> None:
         rsaOffset = self.find_RSA()
         self.data = replaceBufferAtIndex(self.data, b'\x00\x20\x00\x20', rsaOffset, 4)
+
+    def patch_debug_enabled(self) -> None:
+        debugOffset = self.find_debug_enabled()
+        self.data = replaceBufferAtIndex(self.data, b'\x01\x20\x01\x20', debugOffset, 4)
