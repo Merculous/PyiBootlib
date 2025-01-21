@@ -4,7 +4,7 @@ from argparse import ArgumentParser
 from binpatch.io import readBytesFromPath, writeBytesToPath
 from binpatch.types import FilesystemPath
 
-from .patch import iBootPatcher
+from .patch import iBootPatcher, patch_sigcheck_3_4
 
 
 def main() -> None:
@@ -16,18 +16,14 @@ def main() -> None:
     args = parser.parse_args()
 
     if not args.i and not args.o:
-        parser.print_help()
+        return parser.print_help()
 
     inData = readBytesFromPath(args.i[0])
 
-    i = iBootPatcher(inData)
-    i.patch_prod()
-    i.patch_sepo()
-    i.patch_bord()
-    i.patch_ecid()
-    i.patch_rsa()
+    patcher = iBootPatcher(inData)
+    patch_sigcheck_3_4(patcher)
 
-    writeBytesToPath(args.o[0], i.data)
+    writeBytesToPath(args.o[0], patcher.patchedData)
 
 
 if __name__ == '__main__':

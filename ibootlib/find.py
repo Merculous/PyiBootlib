@@ -1,15 +1,13 @@
 
 import struct
 
-from armfind.find import (
-    find_next_MOVW_with_value,
-    find_next_MOV_W_with_value,
-    find_next_LDR_Literal,
-    find_next_BL,
-    find_next_LDR_W_with_value
-)
-from binpatch.utils import getBufferAtIndex
+from armfind.find import (find_next_BL, find_next_LDR_Literal,
+                          find_next_LDR_W_with_value,
+                          find_next_MOV_W_with_value,
+                          find_next_MOVW_with_value)
 from binpatch.types import Buffer
+from binpatch.utils import getBufferAtIndex
+
 
 class iBoot:
     def __init__(self, data: Buffer, log: bool = True) -> None:
@@ -131,9 +129,9 @@ class iBoot:
 
         return blOffset
 
-    def find_RSA(self) -> int:
+    def find_rsa(self) -> int:
         if self.log:
-            print('find_RSA()')
+            print('find_rsa()')
 
         movw = find_next_MOVW_with_value(self.data, 0, 0, 0x414)
 
@@ -188,3 +186,13 @@ class iBoot:
             print(f'Found BL at {blOffset:x}')
 
         return blOffset
+
+
+def find_sigcheck_3_4(iBootObj: iBoot) -> list:
+    return [
+        iBootObj.find_prod(),
+        iBootObj.find_sepo(),
+        iBootObj.find_bord(),
+        iBootObj.find_ecid(),
+        iBootObj.find_rsa()
+    ]
