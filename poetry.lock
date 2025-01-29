@@ -16,7 +16,7 @@ pybinpatch = "^1.0.6"
 type = "git"
 url = "https://github.com/Merculous/PyARMFind.git"
 reference = "HEAD"
-resolved_reference = "c4a71c04df5d5daa5d3e06c3a5d7016f6a9f6e75"
+resolved_reference = "37312a840432e32a59824596b764bbb400a99bf7"
 
 [[package]]
 name = "pybinpatch"
