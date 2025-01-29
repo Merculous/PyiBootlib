@@ -187,12 +187,40 @@ class iBoot:
 
         return blOffset
 
+    def find_boot_args(self) -> int:
+        if self.log:
+            print(f'find_boot_args()')
 
-def find_sigcheck_3_4(iBootObj: iBoot) -> list:
-    return [
-        iBootObj.find_prod(),
-        iBootObj.find_sepo(),
-        iBootObj.find_bord(),
-        iBootObj.find_ecid(),
-        iBootObj.find_rsa()
-    ]
+        bootArgsStr = b'rd=md0 nand-enable-reformat=1 -progress'
+        bootArgsStrOffset = self._data.find(bootArgsStr)
+
+        if bootArgsStrOffset == -1:
+            raise Exception('Failed to find boot args string!')
+        
+        bootArgsStrAddr = struct.pack('<I', self.loadAddr + bootArgsStrOffset)
+        ldr = find_next_LDR_W_with_value(self._data, 0, 0, bootArgsStrAddr)
+
+        if ldr is None:
+            raise Exception(f'Failed to find LDR.W Rx, {bootArgsStr.decode()}')
+        
+        ldr, ldrOffset = ldr
+
+        if self.log:
+            print(f'Found LDR.W Rx, {bootArgsStr.decode()} at {ldrOffset:x}')
+
+        return ldrOffset
+
+    def find_reliance_str(self) -> int:
+        if self.log:
+            print('find_reliance_str()')
+
+        relianceStr = b'Reliance on this certificate'
+        relianceStrOffset = self._data.find(relianceStr)
+
+        if relianceStrOffset == -1:
+            raise Exception(f'Failed to find {relianceStr.decode()}')
+        
+        if self.log:
+            print(f'Found {relianceStr.decode()} at {relianceStrOffset:x}')
+
+        return relianceStrOffset
