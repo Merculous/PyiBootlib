@@ -88,6 +88,12 @@ class iBootPatcher(iBoot):
         uartOffset = self.find_uarts_stage2()
         self.patchedData = replaceBufferAtIndex(self.patchedData, b'\x03\x21', uartOffset, 2)
 
+    def patch_uarts(self) -> None:
+        if not self.hasKernelLoad:
+            self.patch_uarts_stage1()
+        else:
+            self.patch_uarts_stage2()
+
     def patch_sigcheck_567(self) -> None:
         sigOffset = self.find_verify_shsh_567()
         self.patchedData = replaceBufferAtIndex(self.patchedData, b'\x00\x20\x18\x60', sigOffset, 4)

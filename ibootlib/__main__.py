@@ -14,6 +14,7 @@ def main() -> None:
     parser.add_argument('-o', nargs=1, type=FilesystemPath)
 
     parser.add_argument('-b', nargs=1, type=str)
+    parser.add_argument('-u', action='store_true')
 
     args = parser.parse_args()
 
@@ -36,6 +37,9 @@ def main() -> None:
             patch_boot_args_3(patcher, args.b[0].encode())
         else:
             print('boot-args WIP!')
+
+    if args.u:
+        patcher.patch_uarts()
 
     writeBytesToPath(args.o[0], patcher.patchedData)
 
