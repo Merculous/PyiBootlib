@@ -23,12 +23,17 @@ def main() -> None:
     inData = readBytesFromPath(args.i[0])
 
     patcher = iBootPatcher(inData)
-    patcher.patch_debug_enabled()
-
-    patch_sigcheck_3_4(patcher)
+    
+    if patcher.iOSVersion in (3, 4):
+        patch_sigcheck_3_4(patcher)
+    else:
+        print('signature WIP!')
 
     if args.b:
-        patch_boot_args_3(patcher, args.b[0].encode())
+        if patcher.iOSVersion == 3:
+            patch_boot_args_3(patcher, args.b[0].encode())
+        else:
+            print('boot-args WIP!')
 
     writeBytesToPath(args.o[0], patcher.patchedData)
 

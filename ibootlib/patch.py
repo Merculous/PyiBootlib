@@ -39,10 +39,16 @@ class iBootPatcher(iBoot):
         self.patchedData = replaceBufferAtIndex(self.patchedData, b'\x00\x20\x00\x20', rsaOffset, 4)
 
     def patch_debug_enabled(self) -> None:
+        if not self.hasKernelLoad:
+            return
+
         debugOffset = self.find_debug_enabled()
         self.patchedData = replaceBufferAtIndex(self.patchedData, b'\x01\x20\x01\x20', debugOffset, 4)
 
     def patch_boot_args(self, newArgs: Buffer) -> None:
+        if not self.hasKernelLoad:
+            return
+
         bootArgsOffset = self.find_boot_args()
         bootArgsLdr = instructionToObject(getBufferAtIndex(self._data, bootArgsOffset, 4), LDR_W, LDR_WBitSizes)
         bootArgsRefOffset = (bootArgsOffset + bootArgsLdr.imm12 + 4) & ~3
@@ -73,6 +79,14 @@ class iBootPatcher(iBoot):
 
         self.patchedData = replaceBufferAtIndex(self.patchedData, newBootArgs, relianceStrOffset, len(newBootArgs))
         self.patchedData = replaceBufferAtIndex(self.patchedData, relianceStrAddr, bootArgsRefOffset, 4)
+
+    def patch_uarts_stage1(self) -> None:
+        uartOffset = self.find_uarts_stage1()
+        self.patchedData = replaceBufferAtIndex(self.patchedData, b'\x00\x20', uartOffset, 2)
+
+    def patch_uarts_stage2(self) -> None:
+        uartOffset = self.find_uarts_stage2()
+        self.patchedData = replaceBufferAtIndex(self.patchedData, b'\x03\x21', uartOffset, 2)
 
 
 def patch_sigcheck_3_4(iBootPatchObj: iBootPatcher) -> None:
