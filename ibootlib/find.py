@@ -321,3 +321,29 @@ class iBoot:
             print(f'Found MOVS Rx, #0 at {movsOffset:x}')
 
         return movsOffset
+
+    def find_verify_shsh_567(self) -> int:
+        if self.log:
+            print('find_verify_shsh_567()')
+
+        movw = find_next_MOVW_with_value(self._data, 0, 0, 0x4F4D)
+
+        if movw is None:
+            raise Exception('Failed to find MOVW Rx, OM!')
+        
+        movw, movwOffset = movw
+
+        if self.log:
+            print(f'Found MOVW Rx, OM at {movwOffset:x}')
+
+        bl = find_next_BL(self._data, movwOffset - 0x90, 0)
+
+        if bl is None:
+            raise Exception('Failed to find BL!')
+        
+        bl, blOffset = bl
+
+        if self.log:
+            print(f'Found BL at {blOffset:x}')
+
+        return blOffset

@@ -26,6 +26,8 @@ def main() -> None:
     
     if patcher.iOSVersion in (3, 4):
         patch_sigcheck_3_4(patcher)
+    elif patcher.iOSVersion in (5, 6, 7):
+        patcher.patch_sigcheck_567()
     else:
         print('signature WIP!')
 
