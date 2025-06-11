@@ -1,8 +1,8 @@
 
 from argparse import ArgumentParser
+from pathlib import Path
 
 from binpatch.io import readBytesFromPath, writeBytesToPath
-from binpatch.types import FilesystemPath
 
 from .patch import iBootPatcher, patch_boot_args_3, patch_sigcheck_3_4
 
@@ -10,8 +10,8 @@ from .patch import iBootPatcher, patch_boot_args_3, patch_sigcheck_3_4
 def main() -> None:
     parser = ArgumentParser()
 
-    parser.add_argument('-i', nargs=1, type=FilesystemPath)
-    parser.add_argument('-o', nargs=1, type=FilesystemPath)
+    parser.add_argument('-i', nargs=1, type=Path)
+    parser.add_argument('-o', nargs=1, type=Path)
 
     parser.add_argument('-b', nargs=1, type=str)
     parser.add_argument('-u', action='store_true')
