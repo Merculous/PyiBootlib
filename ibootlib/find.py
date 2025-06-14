@@ -2,10 +2,12 @@
 import struct
 from io import BytesIO
 
-from armfind.find import (find_next_BL, find_next_LDR_Literal,
-                          find_next_LDR_W_with_value, find_next_LDRB,
-                          find_next_MOV_W_with_value,
-                          find_next_MOVS_with_value, find_next_MOVW_with_value)
+from armfind.find import (find_next_BL, find_next_CMP_with_value,
+                          find_next_LDR_Literal, find_next_LDR_W_with_value,
+                          find_next_LDRB, find_next_MOV_W_with_value,
+                          find_next_MOVS_with_value, find_next_NEGS)
+from armfind.sizes import BLBitSizes
+from armfind.utils import objectToInstruction, resolve_bl32
 from binpatch.utils import getBufferAtIndex
 
 iBootVersions = {
@@ -164,27 +166,94 @@ class iBoot:
         if self.log:
             print('find_rsa()')
 
-        movw = find_next_MOVW_with_value(self._data, 0, 0, 0x414)
+        ldrCert = find_next_LDR_Literal(self._data, 0, 0, BytesIO(b'CERT'[::-1]))
+
+        if ldrCert is None:
+            raise Exception('Failed to find LDR Rx, CERT!')
+
+        ldrCert, ldrCertOffset = ldrCert
+
+        if self.log:
+            print(f'Found LDR Rx, CERT at {ldrCertOffset:x}')
+
+        bl1 = find_next_BL(self._data, ldrCertOffset, 2)
+
+        if bl1 is None:
+            raise Exception('Failed to find BL 1!')
+
+        bl1, bl1Offset = bl1
+
+        if self.log:
+            print(f'Found BL at {bl1Offset:x}')
+
+        blFunc1 = bl1Offset + resolve_bl32(objectToInstruction(bl1, BLBitSizes))
+
+        if self.log:
+            print(f'BL function start at {blFunc1:x}')
+
+        bl2 = find_next_BL(self._data, blFunc1, 0)
+
+        if bl2 is None:
+            raise Exception('Failed to find BL 2!')
+
+        bl2, bl2Offset = bl2
+
+        if self.log:
+            print(f'Found BL 2 at {bl2Offset:x}')
+
+        blFunc2 = bl2Offset + resolve_bl32(objectToInstruction(bl2, BLBitSizes))
+
+        if self.log:
+            print(f'BL function start at {blFunc2:x}')
+
+        cmp = find_next_CMP_with_value(self._data, blFunc2, 0, 0x14)
+
+        if cmp is None:
+            raise Exception('Failed to find CMP Rx, #0x14!')
+
+        cmp, cmpOffset = cmp
+
+        if self.log:
+            print(f'Found CMP Rx, #0x14 at {cmpOffset:x}')
+
+        bl3 = find_next_BL(self._data, cmpOffset, 1)
+
+        if bl3 is None:
+            raise Exception('Failed to find BL 3!')
+
+        bl3, bl3Offset = bl3
+
+        if self.log:
+            print(f'Found BL 3 at {bl3Offset:x}')
+
+        blFunc3 = bl3Offset + resolve_bl32(objectToInstruction(bl3, BLBitSizes))
+
+        if self.log:
+            print(f'BL function start at {blFunc3:x}')
+
+        movw = find_next_MOV_W_with_value(self._data, blFunc3, 0, 0x3FF)
 
         if movw is None:
-            raise Exception('Failed to find MOVW Rx, #0x414!')
+            print(f'Failed to find MOV.W Rx, 0xFFFFFFFF!')
+
+            negs = find_next_NEGS(self._data, blFunc3, 0)
+
+            if negs is None:
+                raise Exception('Failed to find NEGS!')
+
+            negs, negsOffset = negs
+
+            if self.log:
+                print(f'Found NEGS at {negsOffset:x}')
+
+            return negsOffset - 2
 
         movw, movwOffset = movw
 
         if self.log:
-            print(f'Found MOVW Rx, #0x414 at {movwOffset:x}')
+            print(f'Found MOV.W Rx, 0xFFFFFFFF at {movwOffset:x}')
 
-        mov_w = find_next_MOV_W_with_value(self._data, movwOffset, 0, 0x3FF)
-
-        if mov_w is None:
-            raise Exception('Failed to find MOV.W Rx, #0xFFFFFFFF!')
-
-        mov_w, mov_wOffset = mov_w
-
-        if self.log:
-            print(f'Found MOV.W Rx, #0xFFFFFFFF at {mov_wOffset:x}')
-
-        return mov_wOffset
+        return movwOffset
 
     def find_debug_enabled(self) -> int:
         if self.log:
