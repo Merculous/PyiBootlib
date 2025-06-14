@@ -302,12 +302,15 @@ class iBoot:
         ldr = find_next_LDR_W_with_value(self._data, 0, 0, bootArgsStrAddr)
 
         if ldr is None:
-            raise Exception(f'Failed to find LDR.W Rx, {bootArgsStr.decode()}')
-        
+            ldr = find_next_LDR_Literal(self._data, 0, 0, bootArgsStrAddr)
+
+            if ldr is None:
+                raise Exception(f'Failed to find LDR Rx, {bootArgsStr.decode()}')
+
         ldr, ldrOffset = ldr
 
         if self.log:
-            print(f'Found LDR.W Rx, {bootArgsStr.decode()} at {ldrOffset:x}')
+            print(f'Found LDR(.W) Rx, {bootArgsStr.decode()} at {ldrOffset:x}')
 
         return ldrOffset
 

@@ -2,7 +2,7 @@
 import struct
 from io import BytesIO
 
-from armfind.find import find_next_CMP_with_value
+from armfind.find import find_next_CMP_with_value, find_next_IT
 from armfind.sizes import CMPBitSizes, LDR_WBitSizes
 from armfind.types import LDR_W
 from armfind.utils import instructionToObject, objectToInstruction
@@ -50,18 +50,34 @@ class iBootPatcher(iBoot):
             return
 
         bootArgsOffset = self.find_boot_args()
-        bootArgsLdr = instructionToObject(getBufferAtIndex(self._data, bootArgsOffset, 4), LDR_W, LDR_WBitSizes)
-        bootArgsRefOffset = (bootArgsOffset + bootArgsLdr.imm12 + 4) & ~3
 
-        cmp = find_next_CMP_with_value(self._data, bootArgsOffset, 0, 0)
+        it = find_next_IT(self._data, bootArgsOffset, 0)
 
-        if cmp is None:
-            raise Exception('Failed to find CMP Rx, #0!')
+        if it is None:
+            cmp = find_next_CMP_with_value(self._data, bootArgsOffset - 0x20, 0, 0)
 
-        cmp, cmpOffset = cmp
+            if cmp is None:
+                raise Exception('Failed to find CMP Rx, #0!')
+
+            cmp, cmpOffset = cmp
+        else:
+            it, itOffset = it
+
+            if self.log:
+                print(f'Found IT at {itOffset:x}')
+
+            cmp = find_next_CMP_with_value(self._data, itOffset - 2, 0, 0)
+
+            if cmp is None:
+                raise Exception('Failed to find CMP Rx, #0!')
+            
+            cmp, cmpOffset = cmp
 
         if self.log:
             print(f'Found CMP Rx, #0 at {cmpOffset:x}')
+
+        bootArgsLdr = instructionToObject(getBufferAtIndex(self._data, bootArgsOffset, 4), LDR_W, LDR_WBitSizes)
+        bootArgsRefOffset = (bootArgsOffset + bootArgsLdr.imm12 + 4) & ~3
 
         newCmp = cmp
         newCmp.imm8 = 1

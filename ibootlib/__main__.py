@@ -1,5 +1,6 @@
 
 from argparse import ArgumentParser
+from io import BytesIO
 from pathlib import Path
 
 from binpatch.io import readBytesFromPath, writeBytesToPath
@@ -34,7 +35,7 @@ def main() -> None:
 
     if args.b:
         if patcher.iOSVersion == 3:
-            patch_boot_args_3(patcher, args.b[0].encode())
+            patch_boot_args_3(patcher, BytesIO(args.b[0].encode()))
         else:
             print('boot-args WIP!')
 
