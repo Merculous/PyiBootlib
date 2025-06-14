@@ -36,7 +36,7 @@ class iBoot:
 
     def canLoadKernel(self) -> bool:
         loadStr = b'__PAGEZERO'
-        offset = bytes(self._data.getvalue()).find(loadStr)
+        offset = self._data.getvalue().find(loadStr)
         found = True if offset != -1 else False
         return found
     
@@ -260,7 +260,7 @@ class iBoot:
         if self.log:
             print('find_debug_enabled()')
 
-        debugStrOffset = bytes(self._data.getvalue()).find(b'debug-enabled')
+        debugStrOffset = self._data.getvalue().find(b'debug-enabled')
 
         if debugStrOffset == -1:
             raise Exception('Failed to find debug-enabled!')
@@ -293,7 +293,7 @@ class iBoot:
             print(f'find_boot_args()')
 
         bootArgsStr = b'rd=md0 nand-enable-reformat=1 -progress'
-        bootArgsStrOffset = bytes(self._data.getvalue()).find(bootArgsStr)
+        bootArgsStrOffset = self._data.getvalue().find(bootArgsStr)
 
         if bootArgsStrOffset == -1:
             raise Exception('Failed to find boot args string!')
@@ -316,7 +316,7 @@ class iBoot:
             print('find_reliance_str()')
 
         relianceStr = b'Reliance on this certificate'
-        relianceStrOffset = bytes(self._data.getvalue()).find(relianceStr)
+        relianceStrOffset = self._data.getvalue().find(relianceStr)
 
         if relianceStrOffset == -1:
             raise Exception(f'Failed to find {relianceStr.decode()}')
@@ -358,7 +358,7 @@ class iBoot:
             print('find_uarts_stage2()')
 
         uartStr = b'debug-uarts'
-        uartStrOffset = bytes(self._data.getvalue()).find(uartStr)
+        uartStrOffset = self._data.getvalue().find(uartStr)
 
         if uartStrOffset == -1:
             raise Exception(f'Failed to find {uartStr.decode()}!')
