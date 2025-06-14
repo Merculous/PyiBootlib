@@ -5,7 +5,8 @@ from io import BytesIO
 from armfind.find import (find_next_BL, find_next_CMP_with_value,
                           find_next_LDR_Literal, find_next_LDR_W_with_value,
                           find_next_LDRB, find_next_MOV_W_with_value,
-                          find_next_MOVS_with_value, find_next_NEGS)
+                          find_next_MOVS_with_value, find_next_MOVW_with_value,
+                          find_next_NEGS)
 from armfind.sizes import BLBitSizes
 from armfind.utils import objectToInstruction, resolve_bl32
 from binpatch.utils import getBufferAtIndex
