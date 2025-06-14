@@ -34,7 +34,7 @@ def main() -> None:
         print('signature WIP!')
 
     if args.b:
-        if patcher.iOSVersion == 3:
+        if patcher.iOSVersion in (3, 4):
             patch_boot_args_3(patcher, BytesIO(args.b[0].encode()))
         else:
             print('boot-args WIP!')
