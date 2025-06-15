@@ -16,7 +16,7 @@ pybinpatch = {git = "https://github.com/Merculous/PyBinPatch", rev = "update"}
 type = "git"
 url = "https://github.com/Merculous/PyARMFind.git"
 reference = "HEAD"
-resolved_reference = "a08e0623c6cf30b937f13b35a50ce1f233d2989b"
+resolved_reference = "16979d6c99c4dac20d91d3163c9fe5736c034357"
 
 [[package]]
 name = "pybinpatch"

@@ -3,9 +3,10 @@ import struct
 from io import BytesIO
 
 from armfind.find import find_next_CMP_with_value, find_next_IT
-from armfind.sizes import CMPBitSizes, LDR_WBitSizes
-from armfind.types import LDR_W
+from armfind.sizes import CMPBitSizes, LDR_WBitSizes, LDRLiteralBitSizes
+from armfind.types import LDR_W, LDRLiteral
 from armfind.utils import instructionToObject, objectToInstruction
+from armfind.validators import isLDR_W, isLDRLiteral
 from binpatch.patch import replaceBufferAtIndex
 from binpatch.utils import getBufferAtIndex
 
@@ -76,8 +77,18 @@ class iBootPatcher(iBoot):
         if self.log:
             print(f'Found CMP Rx, #0 at {cmpOffset:x}')
 
-        bootArgsLdr = instructionToObject(getBufferAtIndex(self._data, bootArgsOffset, 4), LDR_W, LDR_WBitSizes)
-        bootArgsRefOffset = (bootArgsOffset + bootArgsLdr.imm12 + 4) & ~3
+        bootArgsLdr = instructionToObject(getBufferAtIndex(self._data, bootArgsOffset, 4), LDR_W, LDR_WBitSizes, isLDR_W)
+
+        if not bootArgsLdr:
+            bootArgsLdr = instructionToObject(getBufferAtIndex(self._data, bootArgsOffset, 2), LDRLiteral, LDRLiteralBitSizes, isLDRLiteral)
+
+            if not bootArgsLdr:
+                raise Exception('Failed to get LDR type!')
+
+            bootArgsRefOffset = (bootArgsOffset + (bootArgsLdr.imm8 << 2) + 4) & ~3
+
+        else:
+            bootArgsRefOffset = (bootArgsOffset + bootArgsLdr.imm12 + 4) & ~3
 
         newCmp = cmp
         newCmp.imm8 = 1
