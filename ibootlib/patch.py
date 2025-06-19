@@ -69,8 +69,14 @@ class iBootPatcher(iBoot):
         if it:
             it, itOffset = it
 
-            if self.log:
-                print(f'Found IT at {itOffset:x}')
+            # Make sure IT isn't super far away
+            itRange = range(bootArgsOffset, bootArgsOffset + 8, 2)
+
+            if itOffset in itRange:
+                if self.log:
+                    print(f'Found IT at {itOffset:x}')
+            else:
+                it, itOffset = None, None
 
         if self.iOSVersion <= 4:
             if it:
