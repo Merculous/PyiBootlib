@@ -2,7 +2,8 @@
 import struct
 from io import BytesIO
 
-from armfind.find import find_next_CMP_with_value, find_next_IT
+from armfind.find import (find_next_CMP_with_value, find_next_IT,
+                          find_next_LDR_Literal)
 from armfind.sizes import CMPBitSizes, LDR_WBitSizes, LDRLiteralBitSizes
 from armfind.types import LDR_W, LDRLiteral
 from armfind.utils import instructionToObject, objectToInstruction
@@ -50,52 +51,6 @@ class iBootPatcher(iBoot):
         if not self.hasKernelLoad:
             return
 
-        bootArgsOffset = self.find_boot_args()
-
-        it = find_next_IT(self._data, bootArgsOffset, 0)
-
-        if it is None:
-            cmp = find_next_CMP_with_value(self._data, bootArgsOffset - 0x20, 0, 0)
-
-            if cmp is None:
-                raise Exception('Failed to find CMP Rx, #0!')
-
-            cmp, cmpOffset = cmp
-        else:
-            it, itOffset = it
-
-            if self.log:
-                print(f'Found IT at {itOffset:x}')
-
-            cmp = find_next_CMP_with_value(self._data, itOffset - 2, 0, 0)
-
-            if cmp is None:
-                raise Exception('Failed to find CMP Rx, #0!')
-            
-            cmp, cmpOffset = cmp
-
-        if self.log:
-            print(f'Found CMP Rx, #0 at {cmpOffset:x}')
-
-        bootArgsLdr = instructionToObject(getBufferAtIndex(self._data, bootArgsOffset, 4), LDR_W, LDR_WBitSizes, isLDR_W)
-
-        if not bootArgsLdr:
-            bootArgsLdr = instructionToObject(getBufferAtIndex(self._data, bootArgsOffset, 2), LDRLiteral, LDRLiteralBitSizes, isLDRLiteral)
-
-            if not bootArgsLdr:
-                raise Exception('Failed to get LDR type!')
-
-            bootArgsRefOffset = (bootArgsOffset + (bootArgsLdr.imm8 << 2) + 4) & ~3
-
-        else:
-            bootArgsRefOffset = (bootArgsOffset + bootArgsLdr.imm12 + 4) & ~3
-
-        newCmp = cmp
-        newCmp.imm8 = 1
-        newCmpBytes = objectToInstruction(newCmp, CMPBitSizes)
-
-        self.patchedData = replaceBufferAtIndex(self.patchedData, newCmpBytes, cmpOffset, 2)
-
         relianceStrOffset = self.find_reliance_str()
         relianceStrAddr = BytesIO(struct.pack('<I', self.loadAddr + relianceStrOffset))
 
@@ -105,7 +60,66 @@ class iBootPatcher(iBoot):
             print(f'Replacing boot-args with new string: {newBootArgs.getvalue().decode()}')
 
         self.patchedData = replaceBufferAtIndex(self.patchedData, newBootArgs, relianceStrOffset, len(newBootArgs.getbuffer()))
+
+        bootArgsOffset = self.find_boot_args()
+
+        it = find_next_IT(self._data, bootArgsOffset, 0)
+        cmp = None
+
+        if it:
+            it, itOffset = it
+
+            if self.log:
+                print(f'Found IT at {itOffset:x}')
+
+        if self.iOSVersion <= 4:
+            if it:
+                cmp = find_next_CMP_with_value(self._data, itOffset - 2, 0, 0)
+            else:
+                cmp = find_next_CMP_with_value(self._data, bootArgsOffset - 0x10, 0, 0)
+        else:
+            cmp = find_next_CMP_with_value(self._data, bootArgsOffset, 0, 0)
+
+        if cmp is None:
+            raise Exception('Failed to find CMP Rx, #0!')
+
+        cmp, cmpOffset = cmp
+
+        if self.log:
+            print(f'Found CMP Rx, #0 at {cmpOffset:x}')
+
+        bootArgsLDR = instructionToObject(getBufferAtIndex(self._data, bootArgsOffset, 2), LDRLiteral, LDRLiteralBitSizes, isLDRLiteral)
+
+        if bootArgsLDR is None:
+            bootArgsLDR = instructionToObject(getBufferAtIndex(self._data, bootArgsOffset, 4), LDR_W, LDR_WBitSizes, isLDR_W)
+
+            if bootArgsLDR is None:
+                raise Exception('Failed to convert boot-args offset to object!')
+            
+            bootArgsRefOffset = (bootArgsOffset + bootArgsLDR.imm12 + 4) & ~3
+
+        else:
+            bootArgsRefOffset = (bootArgsOffset + (bootArgsLDR.imm8 << 2) + 4) & ~3
+
         self.patchedData = replaceBufferAtIndex(self.patchedData, relianceStrAddr, bootArgsRefOffset, 4)
+
+        if self.iOSVersion <= 4:
+            newCMP = cmp
+            newCMP.imm8 = 1
+            newCMPData = objectToInstruction(newCMP, CMPBitSizes)
+            self.patchedData = replaceBufferAtIndex(self.patchedData, newCMPData, cmpOffset, 2)
+            return
+
+        nullLDROffset = itOffset - 2
+        nullLDR = instructionToObject(getBufferAtIndex(self._data, nullLDROffset, 2), LDRLiteral, LDRLiteralBitSizes, isLDRLiteral)
+
+        if nullLDR is None:
+            raise Exception('Failed to get null LDR!')
+
+        newNullLDR = nullLDR
+        newNullLDR.imm8 -= 1
+        newNullLDRData = objectToInstruction(newNullLDR, LDRLiteralBitSizes)
+        self.patchedData = replaceBufferAtIndex(self.patchedData, newNullLDRData, nullLDROffset, 2)
 
     def patch_uarts_stage1(self) -> None:
         uartOffset = self.find_uarts_stage1()
@@ -134,5 +148,5 @@ def patch_sigcheck_3_4(iBootPatchObj: iBootPatcher) -> None:
     iBootPatchObj.patch_rsa()
 
 
-def patch_boot_args_3(iBootPatchObj: iBootPatcher, newArgs: BytesIO) -> None:
+def patch_boot_args(iBootPatchObj: iBootPatcher, newArgs: BytesIO) -> None:
     iBootPatchObj.patch_boot_args(newArgs)

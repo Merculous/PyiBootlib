@@ -417,7 +417,7 @@ class iBoot:
         if self.log:
             print(f'Found MOVW Rx, OM at {movwOffset:x}')
 
-        bl = find_next_BL(self._data, movwOffset - 0x90, 0)
+        bl = find_next_BL(self._data, movwOffset - 0x70, 0)
 
         if bl is None:
             raise Exception('Failed to find BL!')
