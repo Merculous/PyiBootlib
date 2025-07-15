@@ -6,7 +6,7 @@ from armfind.find import (find_next_BL, find_next_CMP_with_value,
                           find_next_LDRB, find_next_MOV_W_with_value,
                           find_next_MOVS_with_value, find_next_MOVW_with_value,
                           find_next_NEGS)
-from armfind.sizes import BLBitSizes
+from armfind.sizes import BLBitSizes, MOVWBitSizes
 from armfind.utils import objectToInstruction, resolve_bl32
 from binpatch.utils import getBufferAtIndex
 
@@ -427,3 +427,51 @@ class iBoot:
             print(f'Found BL at {blOffset:x}')
 
         return blOffset
+
+    def find_platform(self) -> int:
+        if self.log:
+            print('find_platform()')
+
+        platforms = (
+            0x8720, 0x8900, 0x8920,
+            0x8922, 0x8930, 0x8940,
+            0x8942, 0x8945, 0x8947,
+            0x8950, 0x8955
+        )
+
+        matchInsn = None
+        matchOffset = None
+
+        for platform in platforms:
+            i = 0
+
+            while True:
+                movw = find_next_MOVW_with_value(self._data, i, 0, platform)
+
+                if movw is None:
+                    break
+
+                movwInsn, movwOffset = movw
+
+                # Our instruction is always MOVW R0, #0xXXXX
+                if movwInsn.rd != 0:
+                    i = movwOffset + 4
+                    continue
+
+                nextInsn = getBufferAtIndex(self._data, movwOffset + 4, 2)
+
+                if nextInsn != b'\x70\x47':
+                    continue
+
+                matchInsn = movwInsn
+                matchOffset = movwOffset
+                break
+
+        if matchOffset is None:
+            raise Exception('Failed to find platform!')
+        
+        if self.log:
+            imm32 = (matchInsn.i << 11) | (matchInsn.imm4 << 12) | (matchInsn.imm3 << 8) | matchInsn.imm8
+            print(f'Found MOVW Rx, #{hex(imm32)}')
+        
+        return matchOffset
