@@ -22,7 +22,7 @@ def main() -> None:
     if not args.i and not args.o:
         return parser.print_help()
 
-    inData = readBytesFromPath(args.i[0])
+    inData = readBytesFromPath(args.i)
 
     patcher = iBootPatcher(inData)
 
