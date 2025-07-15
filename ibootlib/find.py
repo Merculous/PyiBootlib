@@ -1,6 +1,5 @@
 
 import struct
-from io import BytesIO
 
 from armfind.find import (find_next_BL, find_next_CMP_with_value,
                           find_next_LDR_Literal, find_next_LDR_W_with_value,
@@ -24,7 +23,7 @@ iBootVersions = {
 }
 
 class iBoot:
-    def __init__(self, data: BytesIO, log: bool = True) -> None:
+    def __init__(self, data: bytes, log: bool = True) -> None:
         self._data = data
         self.log = log
         self.loadAddr = self.getLoadAddr()
@@ -32,16 +31,16 @@ class iBoot:
         self.iOSVersion = self.getiOSVersion()
 
     def getLoadAddr(self) -> int:
-        return struct.unpack('<I', getBufferAtIndex(self._data, 0x20, 4).getvalue())[0] - 0x40
+        return struct.unpack('<I', getBufferAtIndex(self._data, 0x20, 4))[0] - 0x40
 
     def canLoadKernel(self) -> bool:
         loadStr = b'__PAGEZERO'
-        offset = self._data.getvalue().find(loadStr)
+        offset = self._data.find(loadStr)
         found = True if offset != -1 else False
         return found
     
     def getiOSVersion(self) -> int:
-        iBootVersion = int(getBufferAtIndex(self._data, 0x286, 10).getvalue().translate(None, b'\x00').split(b'.')[0])
+        iBootVersion = int(getBufferAtIndex(self._data, 0x286, 10).translate(None, b'\x00').split(b'.')[0])
         match = 0
 
         for version in iBootVersions:
@@ -63,7 +62,7 @@ class iBoot:
         if self.log:
             print('find_prod()')
 
-        ldr = find_next_LDR_Literal(self._data, 0, 0, BytesIO(b'PROD'[::-1]))
+        ldr = find_next_LDR_Literal(self._data, 0, 0, b'PROD'[::-1])
 
         if ldr is None:
             raise Exception('Failed to find LDR Rx, PROD!')
@@ -89,7 +88,7 @@ class iBoot:
         if self.log:
             print('find_sepo()')
 
-        ldr = find_next_LDR_Literal(self._data, 0, 0, BytesIO(b'SEPO'[::-1]))
+        ldr = find_next_LDR_Literal(self._data, 0, 0, b'SEPO'[::-1])
 
         if ldr is None:
             raise Exception('Failed to find LDR Rx, SEPO!')
@@ -115,7 +114,7 @@ class iBoot:
         if self.log:
             print('find_bord()')
 
-        ldr = find_next_LDR_Literal(self._data, 0, 0, BytesIO(b'BORD'[::-1]))
+        ldr = find_next_LDR_Literal(self._data, 0, 0, b'BORD'[::-1])
 
         if ldr is None:
             raise Exception('Failed to find LDR Rx, BORD!')
@@ -141,7 +140,7 @@ class iBoot:
         if self.log:
             print('find_ecid()')
 
-        ldr = find_next_LDR_Literal(self._data, 0, 0, BytesIO(b'ECID'[::-1]))
+        ldr = find_next_LDR_Literal(self._data, 0, 0, b'ECID'[::-1])
 
         if ldr is None:
             raise Exception('Failed to find LDR Rx, ECID!')
@@ -167,7 +166,7 @@ class iBoot:
         if self.log:
             print('find_rsa()')
 
-        ldrCert = find_next_LDR_Literal(self._data, 0, 0, BytesIO(b'CERT'[::-1]))
+        ldrCert = find_next_LDR_Literal(self._data, 0, 0, b'CERT'[::-1])
 
         if ldrCert is None:
             raise Exception('Failed to find LDR Rx, CERT!')
@@ -260,12 +259,12 @@ class iBoot:
         if self.log:
             print('find_debug_enabled()')
 
-        debugStrOffset = self._data.getvalue().find(b'debug-enabled')
+        debugStrOffset = self._data.find(b'debug-enabled')
 
         if debugStrOffset == -1:
             raise Exception('Failed to find debug-enabled!')
 
-        debugStrAddr = BytesIO(struct.pack('<I', self.loadAddr + debugStrOffset))
+        debugStrAddr = struct.pack('<I', self.loadAddr + debugStrOffset)
         ldr = find_next_LDR_W_with_value(self._data, 0, 0, debugStrAddr)
 
         if ldr is None:
@@ -293,12 +292,12 @@ class iBoot:
             print(f'find_boot_args()')
 
         bootArgsStr = b'rd=md0 nand-enable-reformat=1 -progress'
-        bootArgsStrOffset = self._data.getvalue().find(bootArgsStr)
+        bootArgsStrOffset = self._data.find(bootArgsStr)
 
         if bootArgsStrOffset == -1:
             raise Exception('Failed to find boot args string!')
         
-        bootArgsStrAddr = BytesIO(struct.pack('<I', self.loadAddr + bootArgsStrOffset))
+        bootArgsStrAddr = struct.pack('<I', self.loadAddr + bootArgsStrOffset)
         ldr = find_next_LDR_W_with_value(self._data, 0, 0, bootArgsStrAddr)
 
         if ldr is None:
@@ -319,7 +318,7 @@ class iBoot:
             print('find_reliance_str()')
 
         relianceStr = b'Reliance on this certificate'
-        relianceStrOffset = self._data.getvalue().find(relianceStr)
+        relianceStrOffset = self._data.find(relianceStr)
 
         if relianceStrOffset == -1:
             raise Exception(f'Failed to find {relianceStr.decode()}')
@@ -361,7 +360,7 @@ class iBoot:
             print('find_uarts_stage2()')
 
         uartStr = b'debug-uarts'
-        uartStrOffset = self._data.getvalue().find(uartStr)
+        uartStrOffset = self._data.find(uartStr)
 
         if uartStrOffset == -1:
             raise Exception(f'Failed to find {uartStr.decode()}!')
@@ -369,7 +368,7 @@ class iBoot:
         if self.log:
             print(f'Found {uartStr.decode()} at {uartStrOffset:x}')
 
-        uartStrAddr = BytesIO(struct.pack('<I', self.loadAddr + uartStrOffset))
+        uartStrAddr = struct.pack('<I', self.loadAddr + uartStrOffset)
 
         if self.iOSVersion in (3, 4, 5, 6):
             # We need the second instruction

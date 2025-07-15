@@ -1,9 +1,7 @@
 
 import struct
-from io import BytesIO
 
-from armfind.find import (find_next_CMP_with_value, find_next_IT,
-                          find_next_LDR_Literal)
+from armfind.find import find_next_CMP_with_value, find_next_IT
 from armfind.sizes import CMPBitSizes, LDR_WBitSizes, LDRLiteralBitSizes
 from armfind.types import LDR_W, LDRLiteral
 from armfind.utils import instructionToObject, objectToInstruction
@@ -15,51 +13,51 @@ from .find import iBoot
 
 
 class iBootPatcher(iBoot):
-    def __init__(self, data: BytesIO, log: bool = True) -> None:
+    def __init__(self, data: bytes, log: bool = True) -> None:
         super().__init__(data, log)
 
-        self.patchedData = self._data
+        self.patchedData = bytearray(self._data)
 
     def patch_prod(self) -> None:
         prodOffset = self.find_prod()
-        self.patchedData = replaceBufferAtIndex(self.patchedData, BytesIO(b'\x00\x20\x00\x20'), prodOffset, 4)
+        self.patchedData = replaceBufferAtIndex(self.patchedData, b'\x00\x20\x00\x20', prodOffset, 4)
 
     def patch_sepo(self) -> None:
         sepoOffset = self.find_sepo()
-        self.patchedData = replaceBufferAtIndex(self.patchedData, BytesIO(b'\x00\x20\x00\x20'), sepoOffset, 4)
+        self.patchedData = replaceBufferAtIndex(self.patchedData, b'\x00\x20\x00\x20', sepoOffset, 4)
 
     def patch_bord(self) -> None:
         bordOffset = self.find_bord()
-        self.patchedData = replaceBufferAtIndex(self.patchedData, BytesIO(b'\x00\x20\x00\x20'), bordOffset, 4)
+        self.patchedData = replaceBufferAtIndex(self.patchedData, b'\x00\x20\x00\x20', bordOffset, 4)
 
     def patch_ecid(self) -> None:
         ecidOffset = self.find_ecid()
-        self.patchedData = replaceBufferAtIndex(self.patchedData, BytesIO(b'\x00\x20\x00\x20'), ecidOffset, 4)
+        self.patchedData = replaceBufferAtIndex(self.patchedData, b'\x00\x20\x00\x20', ecidOffset, 4)
 
     def patch_rsa(self) -> None:
         rsaOffset = self.find_rsa()
-        self.patchedData = replaceBufferAtIndex(self.patchedData, BytesIO(b'\x00\x20\x00\x20'), rsaOffset, 4)
+        self.patchedData = replaceBufferAtIndex(self.patchedData, b'\x00\x20\x00\x20', rsaOffset, 4)
 
     def patch_debug_enabled(self) -> None:
         if not self.hasKernelLoad:
             return
 
         debugOffset = self.find_debug_enabled()
-        self.patchedData = replaceBufferAtIndex(self.patchedData, BytesIO(b'\x01\x20\x01\x20'), debugOffset, 4)
+        self.patchedData = replaceBufferAtIndex(self.patchedData, b'\x01\x20\x01\x20', debugOffset, 4)
 
-    def patch_boot_args(self, newArgs: BytesIO) -> None:
+    def patch_boot_args(self, newArgs: bytes) -> None:
         if not self.hasKernelLoad:
             return
 
         relianceStrOffset = self.find_reliance_str()
-        relianceStrAddr = BytesIO(struct.pack('<I', self.loadAddr + relianceStrOffset))
+        relianceStrAddr = struct.pack('<I', self.loadAddr + relianceStrOffset)
 
-        newBootArgs = BytesIO(newArgs.getvalue() + b'\x00')
+        newBootArgs = newArgs + b'\x00'
 
         if self.log:
-            print(f'Replacing boot-args with new string: {newBootArgs.getvalue().decode()}')
+            print(f'Replacing boot-args with new string: {newBootArgs.decode()}')
 
-        self.patchedData = replaceBufferAtIndex(self.patchedData, newBootArgs, relianceStrOffset, len(newBootArgs.getbuffer()))
+        self.patchedData = replaceBufferAtIndex(self.patchedData, newBootArgs, relianceStrOffset, len(newBootArgs))
 
         bootArgsOffset = self.find_boot_args()
 
@@ -129,11 +127,11 @@ class iBootPatcher(iBoot):
 
     def patch_uarts_stage1(self) -> None:
         uartOffset = self.find_uarts_stage1()
-        self.patchedData = replaceBufferAtIndex(self.patchedData, BytesIO(b'\x00\x20'), uartOffset, 2)
+        self.patchedData = replaceBufferAtIndex(self.patchedData, b'\x00\x20', uartOffset, 2)
 
     def patch_uarts_stage2(self) -> None:
         uartOffset = self.find_uarts_stage2()
-        self.patchedData = replaceBufferAtIndex(self.patchedData, BytesIO(b'\x03\x21'), uartOffset, 2)
+        self.patchedData = replaceBufferAtIndex(self.patchedData, b'\x03\x21', uartOffset, 2)
 
     def patch_uarts(self) -> None:
         if not self.hasKernelLoad:
@@ -141,18 +139,14 @@ class iBootPatcher(iBoot):
         else:
             self.patch_uarts_stage2()
 
+    def patch_sigcheck_3_4(self) -> None:
+        self.patch_prod()
+        self.patch_sepo()
+        self.patch_bord()
+        self.patch_ecid()
+        self.patch_rsa()
+
+
     def patch_sigcheck_567(self) -> None:
         sigOffset = self.find_verify_shsh_567()
-        self.patchedData = replaceBufferAtIndex(self.patchedData, BytesIO(b'\x00\x20\x18\x60'), sigOffset, 4)
-
-
-def patch_sigcheck_3_4(iBootPatchObj: iBootPatcher) -> None:
-    iBootPatchObj.patch_prod()
-    iBootPatchObj.patch_sepo()
-    iBootPatchObj.patch_bord()
-    iBootPatchObj.patch_ecid()
-    iBootPatchObj.patch_rsa()
-
-
-def patch_boot_args(iBootPatchObj: iBootPatcher, newArgs: BytesIO) -> None:
-    iBootPatchObj.patch_boot_args(newArgs)
+        self.patchedData = replaceBufferAtIndex(self.patchedData, b'\x00\x20\x18\x60', sigOffset, 4)
